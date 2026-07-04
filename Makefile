@@ -472,9 +472,19 @@ $(dist_name)/README.txt: README.txt
 $(dist_name)/Apache-2.0.txt: Apache-2.0.txt
 	cp Apache-2.0.txt $@
 
+# Bundle the optional web UI (and its one-touch launchers) so an arbiter gets a
+# ready-to-run package: the self-contained engine plus the interface.
+$(dist_name)/webui: \
+		webui/server.py webui/trfbuild.py webui/trfparse.py \
+		webui/index.html webui/start.bat webui/start.sh | $(dist_name)/
+	mkdir -p $(dist_name)/webui
+	cp webui/server.py webui/trfbuild.py webui/trfparse.py \
+		webui/index.html webui/start.bat webui/start.sh $(dist_name)/webui/
+
 dist-targets: \
 		$(dist_name)/bbpPairings.exe $(dist_name)/LICENSE.txt \
-		$(dist_name)/README.txt $(dist_name)/Apache-2.0.txt
+		$(dist_name)/README.txt $(dist_name)/Apache-2.0.txt \
+		$(dist_name)/webui
 .PHONY: dist-targets
 
 $(dist_name).zip: dist-targets
