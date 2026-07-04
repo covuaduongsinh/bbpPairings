@@ -1,0 +1,7 @@
+# Normalize all text files to LF in the repository and check them out with the
+# platform's native line ending. The engine writes output using native line
+# endings (CRLF on Windows, LF on Unix), and the golden-file tests compare the
+# engine's output byte-for-byte against the checked-in *.output.expected files,
+# so those fixtures must also be checked out with native endings on each
+# platform. `text=auto` guarantees this regardless of a user's core.autocrlf.
+* text=auto
