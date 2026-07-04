@@ -1,0 +1,2 @@
+# Giao diện web chỉ dùng thư viện chuẩn Python (urllib cho Upstash REST).
+# File này (dù rỗng) giúp Vercel nhận diện đây là dự án Python.

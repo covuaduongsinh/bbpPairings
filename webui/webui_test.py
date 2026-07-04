@@ -72,6 +72,19 @@ def main():
     # import sau khi đặt biến môi trường để server đọc đúng cấu hình
     sys.path.insert(0, str(HERE))
     import server  # noqa
+    # BBP_TEST_STORE=kv → dùng KVStore trên một mock Upstash trong tiến trình
+    # (cùng đường mã như bản Vercel); mặc định dùng file store (bản local).
+    if os.environ.get("BBP_TEST_STORE") == "kv":
+        import kv_test
+        import store_kv
+        from http.server import HTTPServer
+        mock_port = free_port()
+        mock = HTTPServer(("127.0.0.1", mock_port), kv_test.MockHandler)
+        threading.Thread(target=mock.serve_forever, daemon=True).start()
+        server.STORE = store_kv.KVStore(
+            url=f"http://127.0.0.1:{mock_port}", token="test")
+    else:
+        server.STORE = server.TournamentStore(server.DATA)
 
     httpd = server.ThreadingHTTPServer(("127.0.0.1", port), server.Handler)
     threading.Thread(target=httpd.serve_forever, daemon=True).start()

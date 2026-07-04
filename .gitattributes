@@ -11,3 +11,6 @@
 *.sh text eol=lf
 *.bat text eol=crlf
 
+# The prebuilt Linux engine is a binary — never apply text/EOL conversion.
+bin/bbpPairings binary
+

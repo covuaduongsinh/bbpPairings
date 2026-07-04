@@ -143,7 +143,11 @@ class TournamentStore:
             return False
 
 
-STORE = TournamentStore(DATA)
+# The active store is injected by the entrypoint: the local server (below) uses
+# the file-based TournamentStore; the Vercel function (api/index.py) sets a
+# KV-backed store. Kept out of import time so importing this module has no
+# filesystem side effects (Vercel's bundle FS is read-only).
+STORE = None
 
 
 # --------------------------------------------------------------------------- #
@@ -376,6 +380,7 @@ if __name__ == "__main__":
         print(f"KHÔNG tìm thấy engine tại {EXE} — hãy build trước "
               f"(make static=yes) hoặc đặt biến BBP_EXE.", file=sys.stderr)
         sys.exit(1)
+    STORE = TournamentStore(DATA)   # local entrypoint uses the file-based store
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
     print(f"BBP Pairings UI đang chạy (đa luồng, LAN):")
     print(f"  • Trên máy chủ:  http://localhost:{PORT}")

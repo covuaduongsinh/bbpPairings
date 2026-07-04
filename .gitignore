@@ -2,6 +2,8 @@
 *.exe
 *.d
 bbpPairings*
+# ...except the prebuilt fully-static Linux engine bundled for Vercel deploy.
+!/bin/bbpPairings
 test/test-includes.h
 test/tests/*.output
 test/tests/*.teams

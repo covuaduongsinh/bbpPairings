@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api/index" }
+  ],
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "{webui/index.html,webui/server.py,webui/trfbuild.py,webui/trfparse.py,webui/store_kv.py,bin/bbpPairings}",
+      "maxDuration": 30,
+      "memory": 1024
+    }
+  }
+}

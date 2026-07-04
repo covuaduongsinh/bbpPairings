@@ -118,7 +118,12 @@ ifeq ($(COMP),clang)
 	endif
 endif
 
-ifeq ($(static),yes)
+ifeq ($(static),full)
+	# Fully static (no dynamic glibc). Used for a maximally portable Linux
+	# binary that runs on any host/runtime regardless of its glibc version
+	# (e.g. bundled inside a Vercel serverless function).
+	optional_ldflags += -static
+else ifeq ($(static),yes)
 	ifeq ($(target_os),linux)
 		optional_ldflags += -static-libstdc++ -static-libgcc
 	else

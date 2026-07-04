@@ -1,0 +1,16 @@
+# Loại phần build C++ và tệp không cần cho deploy Vercel. Engine đã được
+# build sẵn thành bin/bbpPairings (Linux tĩnh) và commit vào repo.
+src/
+build/
+test/
+packaging/
+Makefile
+*.exe
+*.o
+*.d
+webui/data/
+webui/__pycache__/
+webui/webui_test.py
+webui/kv_test.py
+webui/start.bat
+webui/start.sh
