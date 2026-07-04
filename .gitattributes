@@ -5,3 +5,9 @@
 # so those fixtures must also be checked out with native endings on each
 # platform. `text=auto` guarantees this regardless of a user's core.autocrlf.
 * text=auto
+
+# Shell scripts must stay LF even when checked out on Windows (a CRLF shebang
+# line breaks them on Unix); Windows batch files should be CRLF.
+*.sh text eol=lf
+*.bat text eol=crlf
+
