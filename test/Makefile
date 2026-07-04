@@ -164,6 +164,13 @@ invariants:
 	$(PYTHON) invariants.py --exe ../bbpPairings.exe --campaign --seeds $(INVARIANT_SEEDS)
 .PHONY: invariants
 
+# Optional cross-validation against JaVaFo (the FIDE reference). Not part of
+# `run` because it needs the JaVaFo jar; soft-skips (self-check only) otherwise.
+#   make -C test javafo JAVAFO_JAR=/path/to/javafo.jar
+javafo:
+	$(PYTHON) javafo_compare.py --exe ../bbpPairings.exe $(if $(JAVAFO_JAR),--javafo $(JAVAFO_JAR))
+.PHONY: javafo
+
 clean:
 	$(RM) -r $(TESTS)/*.output
 	$(RM) -r bbpPairingsTests.*
