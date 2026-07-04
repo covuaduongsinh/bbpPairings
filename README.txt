@@ -257,3 +257,32 @@ The core of the pairing engine is an application of the simpler of the two
 weighted matching algorithms exposited in "An O(EV log V) Algorithm for Finding
 a Maximal Weighted Matching in General Graphs," by Zvi Galil, Silvio Micali, and
 Harold Gabow, 1986.
+
+Testing
+-------
+Run the test suite with "make test" (which builds the engine first). It has
+three layers:
+
+1. Golden-file regression tests (test/tests/*.cpp). Each test runs the engine on
+   a fixed TRF input and compares the output byte-for-byte against a checked-in
+   expected file. These cover textbook Dutch examples, past bug regressions, the
+   team feature, and specific result codes (half-point byes, forfeits). Because
+   the expected files were produced by the engine itself, these are regression
+   tests -- they detect changes in behavior, not FIDE non-conformance per se.
+
+2. Portable CLI/behavior tests (test/cli_tests.py). These drive the executable
+   through its documented exit-code contract (no-valid-pairing, invalid input,
+   file-access errors), and exercise unrated players, half-point byes, forfeits,
+   and the Dutch checker mode.
+
+3. Oracle-independent invariant checks (test/invariants.py). This generates many
+   tournaments with the built-in generator -- including forfeits, retirements
+   (withdrawals), half-point byes, and non-standard point systems, under both
+   the Dutch and Burstein systems -- and asserts the hard constraints that any
+   legal Swiss pairing must satisfy (no two players ever play twice, pairings
+   are symmetric, and teammates are never paired), independent of the pairing
+   algorithm. Colour criteria are reported as advisory notes because forfeits
+   and byes can force legitimate exceptions.
+
+The Python layers require Python 3 and can be overridden, e.g.
+"make -C test run PYTHON=python INVARIANT_SEEDS=6".

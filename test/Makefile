@@ -140,8 +140,15 @@ bbpPairingsTests.exe: test-includes.h main.cpp
 
 run: bbpPairingsTests.exe
 	./bbpPairingsTests.exe ../bbpPairings.exe $(TESTS)
+	$(MAKE) cli
 	$(MAKE) invariants
 .PHONY: run
+
+# Portable CLI behaviour / exit-code tests (no-valid-pairing, invalid input,
+# file error, unrated players, half-point byes, forfeits, Dutch checker).
+cli:
+	$(PYTHON) cli_tests.py --exe ../bbpPairings.exe
+.PHONY: cli
 
 # Oracle-independent validation: generate many tournaments with the engine and
 # assert the hard FIDE invariants (no repeat game, symmetric pairings, no
