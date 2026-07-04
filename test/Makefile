@@ -142,7 +142,14 @@ run: bbpPairingsTests.exe
 	./bbpPairingsTests.exe ../bbpPairings.exe $(TESTS)
 	$(MAKE) cli
 	$(MAKE) invariants
+	$(MAKE) webui
 .PHONY: run
+
+# Integration test for the web UI server (server-side storage, optimistic
+# locking, same-team constraint) driven over HTTP against a real instance.
+webui:
+	$(PYTHON) ../webui/webui_test.py
+.PHONY: webui
 
 # Portable CLI behaviour / exit-code tests (no-valid-pairing, invalid input,
 # file error, unrated players, half-point byes, forfeits, Dutch checker).

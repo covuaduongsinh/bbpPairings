@@ -339,7 +339,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as e:  # noqa
             self._json({"error": str(e)}, 500)
 
-    def log_message(self, fmt, *args):  # log gọn
+    def log_message(self, fmt, *args):  # log gọn (tắt khi BBP_QUIET)
+        if os.environ.get("BBP_QUIET"):
+            return
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
 
