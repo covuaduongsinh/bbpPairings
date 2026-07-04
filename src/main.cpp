@@ -187,7 +187,8 @@ int main(const int argc, char**const argv)
     std::string outputFilename;
     const bool pairingsOutputFile =
       argc >= 3 + processedArgCount
-        && argv[2u + processedArgCount] != std::string("-l");
+        && argv[2u + processedArgCount] != std::string("-l")
+        && argv[2u + processedArgCount] != std::string("-t");
     const bool doPairings =
       argc >= 2 + processedArgCount + pairingsOutputFile
         && argv[1u + processedArgCount] == std::string("-p");

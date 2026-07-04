@@ -202,6 +202,19 @@ def main(argv=None):
         r.expect("burstein-teams pairs no teammates", res.returncode == 0 and not bad,
                  f"teammates paired: {bad}")
 
+        # 10) -t without an explicit -p output file: pairing goes to stdout and
+        #     the team standings to the -t file. (Regression for the argument
+        #     parser, which previously mistook -t for the -p output filename.)
+        res = r.run(["--dutch", "bteam.trf", "-p", "-t", "teams.out"], w)
+        first = res.stdout.splitlines()[0].strip() if res.stdout.strip() else ""
+        r.expect("-p-to-stdout with -t -> exit 0 + stdout pairing",
+                 res.returncode == 0 and first.isdigit(),
+                 f"got {res.returncode}, stdout {res.stdout!r}: {res.stderr.strip()}")
+        tpath = w / "teams.out"
+        r.expect("-t file written with 3 teams",
+                 tpath.exists() and tpath.read_text().splitlines()[0].strip() == "3",
+                 f"teams file: {tpath.read_text() if tpath.exists() else 'MISSING'!r}")
+
     print(f"\nCLI tests: {r.passed} passed, {r.failures} failed.")
     return 1 if r.failures else 0
 
