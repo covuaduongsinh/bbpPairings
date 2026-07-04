@@ -102,6 +102,11 @@ CXX=g++
 
 CXXFLAGS = $(optional_cxxflags)
 
+# Interpreter and seed count for the independent invariant campaign
+# (invariants.py). Override e.g. with `make run PYTHON=python INVARIANT_SEEDS=6`.
+PYTHON ?= python3
+INVARIANT_SEEDS ?= 3
+
 TESTS = tests
 
 TEST_SOURCES = $(shell find $(TESTS) -name "*.cpp")
@@ -135,7 +140,15 @@ bbpPairingsTests.exe: test-includes.h main.cpp
 
 run: bbpPairingsTests.exe
 	./bbpPairingsTests.exe ../bbpPairings.exe $(TESTS)
+	$(MAKE) invariants
 .PHONY: run
+
+# Oracle-independent validation: generate many tournaments with the engine and
+# assert the hard FIDE invariants (no repeat game, symmetric pairings, no
+# same-team pairing) hold. Requires Python 3 and a built ../bbpPairings.exe.
+invariants:
+	$(PYTHON) invariants.py --exe ../bbpPairings.exe --campaign --seeds $(INVARIANT_SEEDS)
+.PHONY: invariants
 
 clean:
 	$(RM) -r $(TESTS)/*.output
