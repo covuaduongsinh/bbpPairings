@@ -281,6 +281,21 @@ namespace tournament
   };
 
   /**
+   * A struct representing a team of players. The tournament is still paired
+   * individually, but players on the same team are never paired against each
+   * other, and teams are ranked by the sum of their members' scores.
+   */
+  struct Team
+  {
+    std::u32string name;
+    std::deque<player_index> members;
+
+    Team(std::u32string name_, std::deque<player_index> &&members_)
+      : name(std::move(name_)), members(std::move(members_))
+    { }
+  };
+
+  /**
    * A struct representing the details and history of a tournament.
    */
   struct Tournament
@@ -306,6 +321,7 @@ namespace tournament
     swisssystems::SwissSystem swissSystem = swisssystems::NONE;
     bool defaultAcceleration = true;
     std::deque<ForbiddenPairsEntry> forbiddenPairs;
+    std::deque<Team> teams;
 
     points getPoints(const Player &player, const Match &match) const &
     {

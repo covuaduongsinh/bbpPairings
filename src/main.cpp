@@ -260,6 +260,21 @@ int main(const int argc, char**const argv)
         ++processedArgCount;
       }
     }
+    const bool teamStandings =
+      argc >= 1 + processedArgCount
+        && argv[processedArgCount] == std::string("-t");
+    std::string teamFilename;
+    bool teamCustomFilename{ };
+    if (teamStandings)
+    {
+      ++processedArgCount;
+      teamCustomFilename = processedArgCount < argc;
+      if (teamCustomFilename)
+      {
+        teamFilename = argv[processedArgCount];
+        ++processedArgCount;
+      }
+    }
     if (
       argc > 1 + printInfo
         && (swissSystem == swisssystems::NONE
@@ -314,6 +329,7 @@ int main(const int argc, char**const argv)
         << swissSystemSyntax
         << " input-file -p [output-file] "
         << checklistString
+        << " [-t [team-standings-file]]"
         << std::endl
 #ifndef OMIT_GENERATOR
         << argv[0]
@@ -585,6 +601,31 @@ int main(const int argc, char**const argv)
               << outputFilename
               << '.'
               << std::endl;
+          }
+        }
+
+        // Output the team standings, if requested.
+        if (teamStandings)
+        {
+          if (teamCustomFilename)
+          {
+            relativizePath(teamFilename, inputFilename);
+          }
+          else
+          {
+            teamFilename =
+              std::filesystem::path(inputFilename)
+                .replace_extension("team").string();
+          }
+          std::ofstream teamStream(teamFilename);
+          if (!teamStream)
+          {
+            std::cerr << "The team standings file could not be opened."
+              << std::endl;
+          }
+          else
+          {
+            fileformats::trf::writeTeamStandings(teamStream, tournament);
           }
         }
       }

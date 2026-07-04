@@ -551,6 +551,54 @@ namespace fileformats
       }
 
       /**
+       * Process a 013 line (FIDE team-composition record).
+       *
+       * Layout: "013" (cols 0-2), a space, a fixed-width team-name field, then
+       * the members' starting rank numbers as 4-digit fields in 5-char steps,
+       * mirroring the 260 layout so that the IDs land on 5-char boundaries.
+       */
+      tournament::Team readTeam013(const std::u32string &line)
+      {
+        constexpr std::u32string::size_type nameStart = 4u;
+        constexpr std::u32string::size_type nameWidth = 32u;
+        constexpr std::u32string::size_type playersStart = nameStart + nameWidth;
+
+        if (line.size() < nameStart)
+        {
+          throw InvalidLineException();
+        }
+
+        std::u32string name =
+          line.substr(nameStart, std::min(nameWidth, line.size() - nameStart));
+        const auto lastNonSpace = name.find_last_not_of(U' ');
+        name = lastNonSpace == name.npos ? U"" : name.substr(0, lastNonSpace + 1u);
+
+        std::deque<tournament::player_index> members;
+        std::u32string::size_type startIndex = playersStart;
+        for (
+          ;
+          startIndex + 4u <= line.size() && startIndex >= 5u;
+          startIndex += 5u)
+        {
+          if (line.substr(startIndex, 4) == U"    ")
+          {
+            continue;
+          }
+          members.push_back(readPlayerId(line.substr(startIndex, 4)));
+        }
+        if (line.find_first_not_of(U" ", startIndex) < line.npos)
+        {
+          throw InvalidLineException();
+        }
+        if (members.empty())
+        {
+          throw InvalidLineException("team with no players");
+        }
+
+        return tournament::Team(std::move(name), std::move(members));
+      }
+
+      /**
        * Process an XXP line.
        */
       std::deque<tournament::player_index> readForbiddenPairsXxp(
@@ -1087,10 +1135,15 @@ namespace fileformats
               {
                 readPlayer(line, result, data);
               }
-              else if (prefix == U"013" || prefix == U"310")
+              else if (prefix == U"013")
+              {
+                result.teams.push_back(readTeam013(line));
+              }
+              else if (prefix == U"310")
               {
                 throw
-                  InvalidLineException("team tournaments are not supported");
+                  InvalidLineException(
+                    "team-vs-team (board-order) pairing is not supported");
               }
               else if (prefix == U"240")
               {
@@ -1346,6 +1399,35 @@ namespace fileformats
         result.forbiddenPairs.emplace_back(std::move(entry), 0u, result.expectedRounds);
       }
 
+      // Forbid players on the same team from ever being paired together, and
+      // validate the team rosters. The team constraint spans every round.
+      {
+        std::unordered_set<tournament::player_index> assignedToTeam;
+        for (const auto &team : result.teams)
+        {
+          for (const auto member : team.members)
+          {
+            if (member >= result.players.size()
+                  || !result.players[member].isValid)
+            {
+              throw FileFormatException(
+                "A 013 line references an undeclared player.");
+            }
+            if (!assignedToTeam.insert(member).second)
+            {
+              throw FileFormatException(
+                "A player appears in more than one team.");
+            }
+          }
+          result.forbiddenPairs.emplace_back(
+            std::deque<tournament::player_index>(
+              team.members.begin(),
+              team.members.end()),
+            0u,
+            result.expectedRounds);
+        }
+      }
+
       if (result.initialColor == tournament::COLOR_NONE)
       {
         result.initialColor = inferFirstColor(result);
@@ -1551,6 +1633,64 @@ namespace fileformats
         outputStream << "142 "
           << utility::uintstringconversion::toString(tournament.expectedRounds)
           << '\r';
+      }
+    }
+
+    /**
+     * Write the team standings (teams ranked by the sum of their members'
+     * scores) to outputStream. Each line is tab-delimited:
+     *   <rank>\t<totalPoints>\t<teamName>\t<memberId1>\t<memberId2>...
+     * with member IDs written 1-based. The first line is the number of teams.
+     */
+    void writeTeamStandings(
+      std::ostream &outputStream,
+      const tournament::Tournament &tournament)
+    {
+      std::wstring_convert<std::codecvt_utf8<char32_t>, char32_t> convert;
+
+      struct TeamRow
+      {
+        const tournament::Team *team;
+        unsigned long long total;
+      };
+      std::vector<TeamRow> rows;
+      rows.reserve(tournament.teams.size());
+      for (const tournament::Team &team : tournament.teams)
+      {
+        unsigned long long total = 0u;
+        for (const tournament::player_index member : team.members)
+        {
+          total += tournament.players[member].scoreWithoutAcceleration;
+        }
+        rows.push_back(TeamRow{ &team, total });
+      }
+
+      std::stable_sort(
+        rows.begin(),
+        rows.end(),
+        [](const TeamRow &row0, const TeamRow &row1)
+        {
+          return row0.total > row1.total;
+        });
+
+      outputStream << rows.size() << '\n';
+      tournament::player_index rank = 0u;
+      for (const TeamRow &row : rows)
+      {
+        outputStream
+          << utility::uintstringconversion::toString(++rank)
+          << '\t'
+          << utility::uintstringconversion::toString(row.total, 1u)
+          << '\t'
+          << convert.to_bytes(row.team->name);
+        for (const tournament::player_index member : row.team->members)
+        {
+          outputStream
+            << '\t'
+            << utility::uintstringconversion::toString(
+                tournament::player_index(tournament.players[member].id + 1u));
+        }
+        outputStream << '\n';
       }
     }
   }

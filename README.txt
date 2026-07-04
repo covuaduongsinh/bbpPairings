@@ -119,6 +119,38 @@ TRF, but it can also read files produced using the codes specified in the JaVaFo
 AUM.
 
 
+Team tournaments
+----------------
+BBP Pairings supports team competitions that are played as an ordinary
+individual Swiss tournament with two additional rules: players on the same team
+are never paired against each other, and each team is ranked by the sum of the
+scores of all its members. This is not board-order (team-vs-team) pairing; the
+matching is still individual.
+
+Teams are declared with the standard FIDE 013 code. Each 013 line names one team
+and lists the pairing IDs (starting rank numbers) of its members:
+013 <team name>                    <id> <id> <id> ...
+The team name occupies a fixed-width field (columns 4-35), and the member IDs
+follow in four-character fields starting at column 36, exactly as for the 260
+forbidden-pairs code. Every listed player must be declared with a 001 line, and
+no player may belong to more than one team; otherwise the file is rejected.
+(The 310 board-order team code remains unsupported.)
+
+Internally, each team is expanded into a forbidden-pairs constraint spanning
+every round, so the same-team rule composes with any existing 260/XXP forbidden
+pairs. Because this is a hard constraint that is never relaxed (not even in the
+last round), an over-constrained setup, such as one team holding half or more of
+the field, may make a valid pairing impossible; in that case the program reports
+that no valid pairing exists (error code 1), which is expected behavior.
+
+When pairing (-p), the team standings can be written to a file with the -t
+option (see the command-line syntax below). The file lists, one team per line,
+the rank, the team's total score, the team name, and the member IDs, ranked by
+total score:
+<rank>	<total points>	<team name>	<member id> <member id> ...
+The first line is the number of teams, and the fields are tab-separated.
+
+
 Random Tournament Generator
 ---------------------------
 The point value parameters not supported in JaVaFo 1.4 can be set using the keys
@@ -172,7 +204,7 @@ which Swiss system to use for pairing is required.
 The acceptable syntax forms for running BBP Pairings are:
 bbpPairings.exe [-r]
 bbpPairings.exe [-r] (--burstein | --dutch) input-file -c [-l [check-list-file]]
-bbpPairings.exe [-r] (--burstein | --dutch) input-file -p [output-file] [-l [check-list-file]]
+bbpPairings.exe [-r] (--burstein | --dutch) input-file -p [output-file] [-l [check-list-file]] [-t [team-standings-file]]
 bbpPairings.exe [-r] (--burstein | --dutch) (model-file -g | -g [config-file]) -o trf_file [-s random_seed] [-l [check-list-file]]
 
 If bbpPairings.exe is not in the search path, the path to the executable should

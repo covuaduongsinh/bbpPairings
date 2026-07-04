@@ -53,6 +53,8 @@ namespace fileformats
       std::ostream &,
       const tournament::Tournament &,
       FileData &&);
+
+    void writeTeamStandings(std::ostream &, const tournament::Tournament &);
   }
 }
 
