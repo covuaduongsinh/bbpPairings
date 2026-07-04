@@ -161,6 +161,47 @@ def main(argv=None):
                  chk.returncode == 0 and not residual,
                  f"unexpected checker lines: {residual!r}")
 
+        # 8) Over-constrained teams -> exit 1. Team {1,2,3} of four players
+        #    leaves two teammates who cannot be paired in round 1.
+        (w / "overteam.trf").write_text(
+            trf(3, [(i, 2000 - 10 * i, 0.0, []) for i in range(1, 5)],
+                extra_lines=["013 Big" + " " * (32 - 3) + "   1    2    3"]),
+            encoding="utf-8", newline="")
+        res = r.run(["--dutch", "overteam.trf", "-p"], w)
+        r.expect("over-constrained-team -> exit 1", res.returncode == 1,
+                 f"got {res.returncode}: {res.stderr.strip()}")
+
+        # 9) Burstein also honours the same-team constraint. Reuse the Dutch
+        #    team fixture (teams {1,4}, {2,5}, {3,6}) under --burstein.
+        teams = {1: 0, 4: 0, 2: 1, 5: 1, 3: 2, 6: 2}
+        (w / "bteam.trf").write_text(
+            trf(3, [
+                (1, 2590, 1.0, [("   5", "w", "1")]),
+                (2, 2580, 1.0, [("   6", "w", "1")]),
+                (3, 2570, 0.5, [("   4", "b", "=")]),
+                (4, 2560, 0.5, [("   3", "w", "=")]),
+                (5, 2550, 0.0, [("   1", "b", "0")]),
+                (6, 2540, 0.0, [("   2", "b", "0")]),
+            ], extra_lines=[
+                "013 Team Alpha" + " " * (32 - 10) + "   1    4",
+                "013 Team Beta" + " " * (32 - 9) + "   2    5",
+                "013 Team Gamma" + " " * (32 - 10) + "   3    6",
+            ]),
+            encoding="utf-8", newline="")
+        res = r.run(["--burstein", "bteam.trf", "-p"], w)
+        r.expect("burstein-teams -> exit 0", res.returncode == 0,
+                 f"got {res.returncode}: {res.stderr.strip()}")
+        # Verify no two teammates were paired.
+        bad = []
+        for ln in res.stdout.splitlines()[1:]:
+            parts = ln.split()
+            if len(parts) == 2:
+                a, b = int(parts[0]), int(parts[1])
+                if b != 0 and teams.get(a) is not None and teams.get(a) == teams.get(b):
+                    bad.append((a, b))
+        r.expect("burstein-teams pairs no teammates", res.returncode == 0 and not bad,
+                 f"teammates paired: {bad}")
+
     print(f"\nCLI tests: {r.passed} passed, {r.failures} failed.")
     return 1 if r.failures else 0
 

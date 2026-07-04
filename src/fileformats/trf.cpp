@@ -1637,9 +1637,13 @@ namespace fileformats
     }
 
     /**
-     * Write the team standings (teams ranked by the sum of their members'
-     * scores) to outputStream. Each line is tab-delimited:
-     *   <rank>\t<totalPoints>\t<teamName>\t<memberId1>\t<memberId2>...
+     * Write the team standings to outputStream. Teams are ranked primarily by
+     * the sum of their members' scores; ties are broken by a team Buchholz
+     * value (the sum, over all members, of the scores of the opponents each
+     * member actually played), and then by the order in which the teams were
+     * declared, so the ordering is fully deterministic. Each line is
+     * tab-delimited:
+     *   <rank>\t<totalPoints>\t<tiebreak>\t<teamName>\t<memberId1>\t<memberId2>...
      * with member IDs written 1-based. The first line is the number of teams.
      */
     void writeTeamStandings(
@@ -1652,25 +1656,42 @@ namespace fileformats
       {
         const tournament::Team *team;
         unsigned long long total;
+        unsigned long long tiebreak;
       };
       std::vector<TeamRow> rows;
       rows.reserve(tournament.teams.size());
       for (const tournament::Team &team : tournament.teams)
       {
         unsigned long long total = 0u;
+        unsigned long long tiebreak = 0u;
         for (const tournament::player_index member : team.members)
         {
-          total += tournament.players[member].scoreWithoutAcceleration;
+          const tournament::Player &player = tournament.players[member];
+          total += player.scoreWithoutAcceleration;
+          // Team Buchholz: sum of the scores of opponents actually played.
+          for (const tournament::Match &match : player.matches)
+          {
+            if (match.gameWasPlayed)
+            {
+              tiebreak +=
+                tournament.players[match.opponent].scoreWithoutAcceleration;
+            }
+          }
         }
-        rows.push_back(TeamRow{ &team, total });
+        rows.push_back(TeamRow{ &team, total, tiebreak });
       }
 
+      // stable_sort keeps declaration order as the final tiebreaker.
       std::stable_sort(
         rows.begin(),
         rows.end(),
         [](const TeamRow &row0, const TeamRow &row1)
         {
-          return row0.total > row1.total;
+          if (row0.total != row1.total)
+          {
+            return row0.total > row1.total;
+          }
+          return row0.tiebreak > row1.tiebreak;
         });
 
       outputStream << rows.size() << '\n';
@@ -1681,6 +1702,8 @@ namespace fileformats
           << utility::uintstringconversion::toString(++rank)
           << '\t'
           << utility::uintstringconversion::toString(row.total, 1u)
+          << '\t'
+          << utility::uintstringconversion::toString(row.tiebreak, 1u)
           << '\t'
           << convert.to_bytes(row.team->name);
         for (const tournament::player_index member : row.team->members)

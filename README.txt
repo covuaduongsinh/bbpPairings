@@ -145,10 +145,18 @@ that no valid pairing exists (error code 1), which is expected behavior.
 
 When pairing (-p), the team standings can be written to a file with the -t
 option (see the command-line syntax below). The file lists, one team per line,
-the rank, the team's total score, the team name, and the member IDs, ranked by
-total score:
-<rank>	<total points>	<team name>	<member id> <member id> ...
+the rank, the team's total score, a tie-break value, the team name, and the
+member IDs:
+<rank>	<total points>	<tiebreak>	<team name>	<member id> <member id> ...
 The first line is the number of teams, and the fields are tab-separated.
+
+Teams are ranked primarily by total score. Ties are broken by a team Buchholz
+value -- the sum, over all members, of the scores of the opponents each member
+actually played (unplayed games such as byes and forfeits contribute nothing) --
+and finally by declaration order, so the ranking is fully deterministic. Note
+that because both the total and the tie-break are sums over members, a team with
+more players is favored; if teams are of unequal size, this is by design, since
+the format scores a team as the plain sum of its members' results.
 
 
 Random Tournament Generator
