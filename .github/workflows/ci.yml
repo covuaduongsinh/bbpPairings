@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  linux:
+    name: Linux (gcc) — build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # để `git describe` lấy được phiên bản
+      - name: Install toolchain
+        run: sudo apt-get update && sudo apt-get install -y g++ make python3
+      - name: Build engine
+        run: make
+      - name: Run full test suite (golden + CLI + invariants + webui)
+        run: make -C test run
+
+  windows:
+    name: Windows (mingw-w64, static) — build & test
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up MSYS2 + mingw-w64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            make
+            git
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-python
+      - name: Build engine (static, self-contained)
+        run: make static=yes
+      - name: Run full test suite
+        run: make -C test run PYTHON=python
+      - name: Upload engine artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bbpPairings-windows
+          path: bbpPairings.exe

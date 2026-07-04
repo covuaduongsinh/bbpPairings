@@ -269,7 +269,7 @@ Harold Gabow, 1986.
 Testing
 -------
 Run the test suite with "make test" (which builds the engine first). It has
-three layers:
+four layers:
 
 1. Golden-file regression tests (test/tests/*.cpp). Each test runs the engine on
    a fixed TRF input and compares the output byte-for-byte against a checked-in
@@ -292,5 +292,49 @@ three layers:
    algorithm. Colour criteria are reported as advisory notes because forfeits
    and byes can force legitimate exceptions.
 
+4. Web UI integration test (webui/webui_test.py). This starts the web server in
+   a background thread and drives a complete team tournament over HTTP, checking
+   the server-side storage, optimistic locking, and same-team constraint.
+
 The Python layers require Python 3 and can be overridden, e.g.
 "make -C test run PYTHON=python INVARIANT_SEEDS=6".
+
+Building
+--------
+The engine is built with GNU make and a C++20 compiler (g++ or clang++). On
+Windows it targets mingw-w64; on Unix, the system g++.
+
+    make                 # build bbpPairings.exe (dynamic; needs runtime DLLs)
+    make static=yes      # build a self-contained binary (recommended)
+    make test            # build and run the full test suite
+
+IMPORTANT: a plain "make" on mingw-w64 produces an executable that depends on
+the mingw runtime DLLs (libstdc++-6.dll, libgcc_s_seh-1.dll). To run it on a
+machine without the mingw toolchain -- e.g. an arbiter's laptop at a real
+tournament -- build with "make static=yes", which links those libraries
+statically so the .exe is self-contained. The released binaries are built this
+way.
+
+Web interface
+-------------
+The webui/ directory contains an optional, self-contained web front end (pure
+Python 3 standard library, no external dependencies) for running a tournament
+round by round: entering results, seeing pairings and standings, and printing
+pairing sheets. It shells out to bbpPairings.exe for every pairing, so the
+engine remains the single source of truth.
+
+Start it with webui/start.bat (Windows) or webui/start.sh (Unix), or directly:
+
+    python webui/server.py
+
+Then open http://localhost:8765 on the same machine. The server binds all
+network interfaces by default, so on a local network other devices (a laptop,
+a phone) can open http://<server-ip>:8765 and share the same tournament; the
+LAN address is printed on startup. Tournament state is stored on the server
+(webui/data/*.json), so refreshing the browser or opening from another device
+does not lose data, and concurrent saves are guarded by version checks.
+
+Configuration is via environment variables: BBP_PORT, BBP_HOST, BBP_EXE,
+BBP_DATA, BBP_TIMEOUT, and BBP_TOKEN (an optional shared secret that all
+requests must supply as ?token=... or an X-Token header when the UI is exposed
+on a network).
