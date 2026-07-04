@@ -45,29 +45,25 @@ def build_trf(state: dict) -> str:
     players = state.get("players", [])
     results = state.get("results", [])  # danh sách vòng đã đá
 
-    # matches[pid] = list các entry (opp, color, result) theo thứ tự vòng
-    matches = {int(p["id"]): [] for p in players}
+    # entries[pid][round_1based] = (opp, color, result). Lập chỉ số theo SỐ VÒNG
+    # (không phải theo thứ tự) để một kỳ thủ bỏ lỡ vòng giữa (vd bye nửa điểm)
+    # rồi đá lại vẫn giữ đúng cột: các vòng bỏ lỡ được chèn ô trống.
+    entries = {int(p["id"]): {} for p in players}
     scores = {int(p["id"]): 0.0 for p in players}
 
-    for rnd in results:
-        played = set()
+    for ri, rnd in enumerate(results, start=1):
         for b in rnd.get("boards", []):
             w = int(b["white"]); bl = int(b["black"]); r = b.get("w", "=")
-            played.add(w); played.add(bl)
-            # trắng
-            matches[w].append((f"{bl:04d}", "w", r))
-            # đen: kết quả đảo
+            entries[w][ri] = (f"{bl:04d}", "w", r)
             br = {"1": "0", "0": "1", "=": "="}.get(r, "=")
-            matches[bl].append((f"{w:04d}", "b", br))
+            entries[bl][ri] = (f"{w:04d}", "b", br)
             scores[w] += {"1": 1.0, "0": 0.0, "=": 0.5}.get(r, 0.5)
             scores[bl] += {"1": 1.0, "0": 0.0, "=": 0.5}.get(br, 0.5)
         bye = rnd.get("bye")
         if bye is not None:
             bye = int(bye)
-            matches[bye].append(("0000", "-", "U"))  # bye trọn điểm
+            entries[bye][ri] = ("0000", "-", "U")  # bye trọn điểm
             scores[bye] += 1.0
-            played.add(bye)
-        # ai không đá và không có bye trong vòng này -> để trống (engine coi là chưa đá)
 
     lines = [f"012 {name}"]
     for p in sorted(players, key=lambda x: int(x["id"])):
@@ -81,8 +77,11 @@ def build_trf(state: dict) -> str:
         sc = f"{_fmt_score(scores[pid]):>4}"; buf[80:84] = list(sc[-4:])
         rk = f"{int(p.get('rank', pid)):>4}"; buf[85:89] = list(rk[-4:])
         line = "".join(buf)  # luôn giữ đủ 89 cột (engine yêu cầu >= 84)
-        for (opp, color, result) in matches[pid]:
-            line += _round_entry(opp, color, result)
+        pe = entries[pid]
+        last = max(pe) if pe else 0
+        for k in range(1, last + 1):  # tới vòng cuối có ván; không có đuôi trống
+            e = pe.get(k)
+            line += _round_entry(*e) if e else " " * 10  # vòng bỏ lỡ = ô trống
         lines.append(line)
     lines.append(f"XXR {total}")
     lines.append(f"XXC {initial}")

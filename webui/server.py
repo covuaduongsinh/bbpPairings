@@ -34,6 +34,7 @@ import uuid
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import trfbuild  # noqa: E402
+import trfparse  # noqa: E402
 
 WEB = pathlib.Path(__file__).resolve().parent
 ROOT = WEB.parent
@@ -297,6 +298,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self._json(pair_from_state(body))
             if path == "/api/tournaments":
                 rec = STORE.create(body.get("name", ""), body.get("state", {}))
+                return self._json(rec, 201)
+            if path == "/api/import/trf":
+                state = trfparse.trf_to_state(
+                    body.get("trf", ""), name=body.get("name"),
+                    system=body.get("system", "--dutch"))
+                rec = STORE.create(state.get("name"), state)
                 return self._json(rec, 201)
             if path.endswith("/pair") and path.startswith("/api/tournaments/"):
                 tid = path[len("/api/tournaments/"):-len("/pair")]

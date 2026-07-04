@@ -176,6 +176,24 @@ def main():
               any(t["id"] == tid for t in lst["tournaments"]), lst)
         _, dele = c.call("DELETE", f"/api/tournaments/{tid}")
         check("delete tournament", dele.get("deleted") is True, dele)
+
+        # 8) nhập TRF: dựng TRF từ một state rồi nhập lại, kiểm tra tái tạo
+        import trfbuild
+        src = {"name": "Import src", "totalRounds": 4, "initialColor": "white1",
+               "players": [{"id": i, "name": f"Q{i}", "rating": 2500 - i * 10}
+                           for i in range(1, 5)],
+               "results": [{"boards": [{"white": 1, "black": 3, "w": "1"},
+                                       {"white": 2, "black": 4, "w": "="}],
+                            "bye": None}]}
+        trf = trfbuild.build_trf(src)
+        _, irec = c.call("POST", "/api/import/trf", {"trf": trf, "name": "Nhap"})
+        _, ifull = c.call("GET", f"/api/tournaments/{irec['id']}")
+        ist = ifull["state"]
+        check("TRF import reconstructs players/rounds",
+              len(ist["players"]) == 4 and len(ist["results"]) == 1
+              and ist["results"][0]["boards"][0]["white"] == 1,
+              ist.get("results"))
+        c.call("DELETE", f"/api/tournaments/{irec['id']}")
     finally:
         httpd.shutdown()
         tmp.cleanup()

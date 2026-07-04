@@ -104,7 +104,9 @@
   <span class="badge" id="ver">engine: đang tải…</span>
   <span class="spacer"></span>
   <span class="save" id="savestate"></span>
+  <button class="btn ghost sm no-print" id="importBtn">⬆ Nhập TRF/JSON</button>
   <button class="btn ghost sm no-print" id="openBtn">📂 Giải đã lưu</button>
+  <input type="file" id="fileInput" accept=".trf,.json,.txt" style="display:none">
 </header>
 
 <div class="wrap">
@@ -157,6 +159,7 @@
       <button class="btn ghost sm" id="printBtn">🖨 In</button>
       <button class="btn ghost sm" id="csvBtn">⬇ CSV</button>
       <button class="btn ghost sm" id="trfBtn">⬇ TRF</button>
+      <button class="btn ghost sm" id="jsonBtn">⬇ JSON</button>
     </div>
     <div id="msg"></div>
     <div id="out"><div class="empty">Bấm <b>Tạo danh sách kỳ thủ</b> rồi <b>Bắt đầu</b>, hoặc mở một <b>giải đã lưu</b>.</div></div>
@@ -494,8 +497,27 @@ $("#csvBtn").onclick=()=>{
   download(fn,"﻿"+csv,"text/csv");
 };
 $("#trfBtn").onclick=()=>{if(T&&T.lastTRF)download((T.name||"giai").replace(/\s+/g,"_")+".trf",T.lastTRF,"text/plain");};
+$("#jsonBtn").onclick=()=>{if(T)download((T.name||"giai").replace(/\s+/g,"_")+".json",JSON.stringify(statePayload(),null,1),"application/json");};
 function download(name,content,type){const b=new Blob([content],{type:type+";charset=utf-8"});const u=URL.createObjectURL(b);
   const a=document.createElement("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+
+// ---- nhập giải (TRF hoặc JSON sao lưu) ----
+$("#importBtn").onclick=()=>$("#fileInput").click();
+$("#fileInput").onchange=e=>{const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();rd.onload=()=>{importContent(f.name,rd.result);e.target.value="";};
+  rd.readAsText(f,"utf-8");};
+function importContent(fname,text){
+  const isJson=/\.json$/i.test(fname)||text.trim().startsWith("{");
+  if(isJson){
+    let st;try{st=JSON.parse(text);}catch(err){alert("File JSON không hợp lệ: "+err.message);return;}
+    const state=st.state||st;
+    api("POST","/api/tournaments",{name:state.name||"Giải nhập",state:state})
+      .then(rec=>loadTournament(rec.id)).catch(err=>alert("Lỗi nhập: "+err.message));
+  } else {
+    api("POST","/api/import/trf",{trf:text,name:fname.replace(/\.[^.]*$/,"")})
+      .then(rec=>loadTournament(rec.id)).catch(err=>alert("Lỗi nhập TRF: "+err.message));
+  }
+}
 
 function fmt(x){return Number.isInteger(x)?x+".0":String(x);}
 function esc(s){return(s||"").toString().replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
