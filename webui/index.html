@@ -223,7 +223,7 @@ $("#start").onclick=()=>{
   T={id:null,version:0,system,name:$("#tname").value||"Giải cờ vua",totalRounds:nr,
      initialColor,nTeams,teamNames:teamNames.slice(0,nTeams),
      players:draftPlayers.map(p=>({id:p.id,name:p.name,rating:p.rating,team:p.team||0})),
-     results:[],current:null,finished:false};
+     results:[],withdrawn:[],current:null,finished:false};
   $("#teamTab").style.display=nTeams>0?"":"none";
   $("#start").style.display="none";$("#reset").style.display="";$("#toolbar").style.display="";
   createOnServer().then(()=>pairNext());
@@ -241,7 +241,8 @@ function buildTeams(){
 function statePayload(){
   return {id:T.id,version:T.version,system:T.system,name:T.name,totalRounds:T.totalRounds,
     initialColor:T.initialColor,nTeams:T.nTeams,teamNames:T.teamNames,
-    players:T.players,results:T.results,teams:buildTeams(),finished:T.finished};
+    players:T.players,results:T.results,withdrawn:T.withdrawn||[],
+    teams:buildTeams(),finished:T.finished};
 }
 
 // ---- máy chủ (lưu/mở giải) ----
@@ -269,7 +270,7 @@ function loadTournament(id){
     T={id:rec.id,version:rec.version,system:s.system||"--dutch",name:s.name||"Giải",
        totalRounds:s.totalRounds||5,initialColor:s.initialColor||"white1",
        nTeams:s.nTeams||0,teamNames:s.teamNames||[],players:s.players||[],
-       results:s.results||[],current:null,finished:!!s.finished};
+       results:s.results||[],withdrawn:s.withdrawn||[],current:null,finished:!!s.finished};
     system=T.system;$("#tname").value=T.name;
     [...$("#sys").children].forEach(b=>b.classList.toggle("on",b.dataset.sys===T.system));
     $("#start").style.display="none";$("#reset").style.display="";$("#toolbar").style.display="";
@@ -307,7 +308,8 @@ function pairNext(){
     saveState();switchView("stand");return;}
   setBusy(true);msg.innerHTML="";
   post("/api/pair_state",{system:T.system,name:T.name,totalRounds:T.totalRounds,
-    initialColor:T.initialColor,players:T.players,results:T.results,teams:buildTeams()})
+    initialColor:T.initialColor,players:T.players,results:T.results,
+    withdrawn:T.withdrawn||[],teams:buildTeams()})
   .then(d=>{setBusy(false);
     if(d.code!==0){T.current=null;
       msg.innerHTML=`<div class="err">Engine không ghép được vòng ${d.round} (mã ${d.code}):\n${(d.stderr||"").trim()||"Không có cặp hợp lệ"}\n\nGiải bị bí nước. Bấm một vòng đã đá để sửa kết quả, hoặc ↺ để làm giải mới.</div>`;
@@ -334,6 +336,13 @@ function submitRound(){
   T.current=null;saveState();pairNext();
 }
 function setResult(i,val){T.current.boards[i].w=val;render();}
+function toggleWithdraw(id){
+  if(!T)return;T.withdrawn=T.withdrawn||[];
+  const i=T.withdrawn.indexOf(id);
+  if(i>=0)T.withdrawn.splice(i,1);else T.withdrawn.push(id);
+  saveState();render();
+}
+window.toggleWithdraw=toggleWithdraw;
 function editRound(rn){ // mở lại vòng đã đá để sửa
   if(!T||rn>T.results.length)return;
   const r=T.results[rn-1];
@@ -393,12 +402,18 @@ function render(){
 }
 function renderStand(){
   const S=standings();
+  const wd=new Set(T.withdrawn||[]);const showWd=!T.finished;
   out.innerHTML=`<div class="meta"><span class="kv">Giải: <b>${esc(T.name)}</b></span>
-      <span class="kv">Đã đá: <b>${T.results.length}/${T.totalRounds}</b> vòng</span></div>
-    <table><tr><th>#</th><th>Kỳ thủ</th>${T.nTeams?"<th>Đội</th>":""}<th>Rating</th><th style="text-align:right">Điểm</th></tr>
-    ${S.map((p,i)=>`<tr><td style="color:var(--muted)">${i+1}</td><td style="font-weight:600">${esc(p.name)}</td>
+      <span class="kv">Đã đá: <b>${T.results.length}/${T.totalRounds}</b> vòng</span>
+      ${wd.size?`<span class="kv" style="color:var(--warn)">Đã rút: <b>${wd.size}</b></span>`:""}</div>
+    <table><tr><th>#</th><th>Kỳ thủ</th>${T.nTeams?"<th>Đội</th>":""}<th>Rating</th><th style="text-align:right">Điểm</th>${showWd?"<th></th>":""}</tr>
+    ${S.map((p,i)=>{const w=wd.has(p.id);return `<tr${w?' style="opacity:.5"':''}><td style="color:var(--muted)">${i+1}</td>
+      <td style="font-weight:600">${esc(p.name)}${w?' <span style="color:var(--warn);font-size:11px">(đã rút)</span>':''}</td>
       ${T.nTeams?`<td style="color:var(--muted)">${p.team?esc(teamName(p.team)):"—"}</td>`:""}
-      <td style="color:var(--muted)">${p.rating}</td><td style="text-align:right;color:var(--accent2);font-weight:700">${fmt(p.score)}</td></tr>`).join("")}</table>`;
+      <td style="color:var(--muted)">${p.rating}</td>
+      <td style="text-align:right;color:var(--accent2);font-weight:700">${fmt(p.score)}</td>
+      ${showWd?`<td style="text-align:right"><button class="btn ghost sm no-print" style="padding:3px 9px;font-size:12px" onclick="toggleWithdraw(${p.id})">${w?"vào lại":"rút"}</button></td>`:""}</tr>`;}).join("")}</table>
+    ${showWd&&wd.size?'<div class="hint">Kỳ thủ đã rút không được bắt cặp từ vòng kế; điểm giữ nguyên.</div>':''}`;
 }
 function renderTeamStand(){
   if(!T.nTeams){out.innerHTML=`<div class="empty">Giải này không chia đội.</div>`;return;}

@@ -28,6 +28,16 @@ def _team_line(name: str, member_ids) -> str:
     return line.rstrip()
 
 
+def _bye_line(round_no: int, ids) -> str:
+    # Dòng 240 (bye yêu cầu) — dùng để loại kỳ thủ đã bỏ giải khỏi vòng đang
+    # ghép. Bố cục: "240" [0:3] | vòng rộng 3 ở cột 6-8 | id 4 chữ số theo bước
+    # 5 ký tự từ cột 10. Engine gán bye tự thân (0 điểm, không bắt cặp).
+    line = "240   " + f"{int(round_no):>3}"
+    for pid in ids:
+        line += f" {int(pid):>4}"
+    return line
+
+
 def build_trf(state: dict) -> str:
     name = state.get("name", "Giai co vua")
     total = int(state.get("totalRounds", 5))
@@ -82,4 +92,10 @@ def build_trf(state: dict) -> str:
         members = [m for m in t.get("members", []) if m]
         if members:
             lines.append(_team_line(t.get("name", "Team"), members))
+    # Kỳ thủ đã bỏ giải: yêu cầu bye (240) cho vòng sắp ghép để engine không
+    # bắt cặp họ nữa. Điểm của họ được giữ nguyên (bye 0 điểm).
+    withdrawn = [int(w) for w in state.get("withdrawn", []) if w]
+    if withdrawn:
+        next_round = len(results) + 1
+        lines.append(_bye_line(next_round, sorted(set(withdrawn))))
     return "\n".join(lines) + "\n"

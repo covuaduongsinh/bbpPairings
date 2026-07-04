@@ -133,6 +133,25 @@ def main():
         check("all rounds saved (version advanced)", version == 4,
               f"version={version}")
 
+        # 3b) kỳ thủ bỏ giải: sau khi rút, không được bắt cặp ở vòng kế
+        wd_state = {"system": "--dutch", "totalRounds": 4, "initialColor": "white1",
+                    "players": [{"id": i, "name": f"P{i}", "rating": 2600 - i * 10}
+                                for i in range(1, 7)],
+                    "results": [{"boards": [{"white": 1, "black": 4, "w": "1"},
+                                            {"white": 2, "black": 5, "w": "1"},
+                                            {"white": 3, "black": 6, "w": "="}],
+                                 "bye": None}],
+                    "withdrawn": [3]}
+        _, wd = c.call("POST", "/api/pair_state", wd_state)
+        paired = set()
+        for ln in (wd.get("pairing") or "").strip().splitlines()[1:]:
+            a, b = (int(x) for x in ln.split())
+            paired.add(a)
+            if b:
+                paired.add(b)
+        check("withdrawn player excluded from pairing",
+              wd["code"] == 0 and 3 not in paired, f"paired={sorted(paired)}")
+
         # 4) bảng đội từ engine có cột tiebreak (4 trường: rank,total,tb,name,..)
         rows = [ln for ln in last_teams.strip().splitlines()[1:] if ln.strip()]
         ok_cols = all(len(r.split("\t")) >= 4 for r in rows) and len(rows) == 3
