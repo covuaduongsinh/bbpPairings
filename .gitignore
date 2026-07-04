@@ -4,3 +4,7 @@
 bbpPairings*
 test/test-includes.h
 test/tests/*.output
+test/tests/*.teams
+.vscode/
+webui/__pycache__/
+webui/data/
