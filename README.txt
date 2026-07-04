@@ -299,6 +299,13 @@ four layers:
 The Python layers require Python 3 and can be overridden, e.g.
 "make -C test run PYTHON=python INVARIANT_SEEDS=6".
 
+Additionally, test/javafo_compare.py cross-checks the Dutch pairings against
+JaVaFo, the FIDE reference implementation. It is not part of "make test" because
+it needs the JaVaFo jar; run it with
+"make -C test javafo JAVAFO_JAR=/path/to/javafo.jar". Divergences are reported
+for review rather than treated as failures, since this program implements the
+2025 rules while JaVaFo 1.4 implements an earlier version.
+
 Building
 --------
 The engine is built with GNU make and a C++20 compiler (g++ or clang++). On
@@ -338,3 +345,17 @@ Configuration is via environment variables: BBP_PORT, BBP_HOST, BBP_EXE,
 BBP_DATA, BBP_TIMEOUT, and BBP_TOKEN (an optional shared secret that all
 requests must supply as ?token=... or an X-Token header when the UI is exposed
 on a network).
+
+Beyond round-by-round pairing, the interface supports the things an arbiter
+needs during a live event:
+  - Withdrawals: a player can be marked as withdrawn from the standings; they
+    keep their score but are excluded from all subsequent pairings (implemented
+    with the engine's 240 requested-bye mechanism).
+  - Result editing: a completed round can be reopened to correct a result, after
+    which the following rounds are re-paired.
+  - Printing: print-friendly pairing sheets and individual/team standings.
+  - Import/export: export a tournament as JSON (a lossless backup that can be
+    restored on another machine) or as TRF, and import either a JSON backup or an
+    existing TRF file. TRF import is best-effort for the simple result model
+    (decisive/drawn games and full-point byes reconstruct exactly; forfeits map
+    to win/loss and special byes are dropped from the reconstructed results).
